@@ -1,42 +1,55 @@
-# RASCUNHO — NÃO SUBIR sem ok do Rodrigo.
-# PathPrefix /api no host dados.co-labore.com (prioridade > espelho nginx).
-# Sem ports publicados; rede Traefik `proxy`. Sem pull sem aprovação.
+# observatorio-api — dados.co-labore.com/api
+# Subir: docker compose up -d --pull never
+# Base: python:3.12-slim (já local). Sem pull sem nova aprovação.
 name: observatorio-api
 
 services:
   observatorio-api:
-    build: .
-    # image: a definir com digest após primeiro build aprovado
+    build:
+      context: .
+      pull: false
+    image: observatorio-api:0.1.0
     container_name: observatorio-api
     restart: unless-stopped
     read_only: true
     tmpfs:
       - /tmp
-    mem_limit: 512m
+    mem_limit: 1g
     cpus: "1.0"
     environment:
       ACERVO_ROOT: /data
-      API_ROOT_PATH: /api
+      API_ROOT_PATH: ""
     volumes:
       - /home/rodrigo/acervo-publico:/data:ro
     networks: [proxy]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/healthz', timeout=5)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
     labels:
       cliente: co-labore
-      env: staging
+      env: production
       camada: dados
       traefik.enable: "true"
       traefik.docker.network: proxy
       traefik.http.routers.dados-api.entrypoints: websecure
       traefik.http.routers.dados-api.rule: Host(`dados.co-labore.com`) && PathPrefix(`/api`)
-      traefik.http.routers.dados-api.priority: "100"
+      traefik.http.routers.dados-api.priority: "200"
       traefik.http.routers.dados-api.tls: "true"
       traefik.http.routers.dados-api.tls.certresolver: letsencrypt
-      traefik.http.routers.dados-api.middlewares: dados-api-ratelimit
+      traefik.http.routers.dados-api.middlewares: dados-api-ratelimit,dados-api-cors
       traefik.http.routers.dados-api.service: dados-api
       traefik.http.services.dados-api.loadbalancer.server.port: "8000"
       traefik.http.middlewares.dados-api-ratelimit.ratelimit.average: "30"
       traefik.http.middlewares.dados-api-ratelimit.ratelimit.burst: "60"
       traefik.http.middlewares.dados-api-ratelimit.ratelimit.sourcecriterion.requestheadername: CF-Connecting-IP
+      # CORS GET público
+      traefik.http.middlewares.dados-api-cors.headers.accesscontrolallowmethods: GET,HEAD,OPTIONS
+      traefik.http.middlewares.dados-api-cors.headers.accesscontrolalloworiginlist: "*"
+      traefik.http.middlewares.dados-api-cors.headers.accesscontrolmaxage: "86400"
+      traefik.http.middlewares.dados-api-cors.headers.addvaryheader: "true"
 
 networks:
   proxy:
