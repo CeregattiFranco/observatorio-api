@@ -1,0 +1,12 @@
+{
+  "item": "ibge-sidra-observatorio",
+  "papel": "metadados SIDRA",
+  "url": "https://servicodados.ibge.gov.br/api/v3/agregados/6804/metadados",
+  "licenca": "CC BY-ND 3.0 BR (exemplo de teste)",
+  "orgao": "IBGE",
+  "metodo": "api",
+  "fotografia": "2026-10-15",
+  "arquivo": "demografia-e-inqueritos-ibge/ibge-sidra-observatorio/exemplo.json",
+  "tamanho": 100,
+  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}

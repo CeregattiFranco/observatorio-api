@@ -1,0 +1,13 @@
+{
+  "item": "observatorio-tabelas-proprias",
+  "papel": "export do banco do observatório",
+  "url": "postgres://consultorio-db/painel.regiao_vacina",
+  "linhas_csv": 4,
+  "licenca": "conteúdo próprio",
+  "orgao": "Co-labore / observatório da Ana",
+  "metodo": "export_db",
+  "fotografia": "2026-10-15",
+  "arquivo": "fonte-propria-nao-oficial/observatorio-tabelas-proprias/painel.regiao_vacina.csv.gz",
+  "tamanho": 116,
+  "sha256": "5e0457bc579b08600dc30318c4e85923f45803569ee89879152cc04887f7253d"
+}
