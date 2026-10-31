@@ -4,9 +4,11 @@ import csv
 import io
 from typing import Any, Optional
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 
 from . import __version__
 from .acervo import get_acervo
@@ -19,11 +21,18 @@ from .config import (
     PAINEL_ALLOWLIST,
 )
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    get_acervo().ensure_loaded()
+    yield
+
+
 app = FastAPI(
     title="observatorio-api",
     version=API_VERSION,
     description="Consulta read-only do acervo público Co-labore (dados.co-labore.com/api).",
     root_path=API_ROOT_PATH or "",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -45,11 +54,6 @@ def _envelope(payload: dict[str, Any], citacao: dict[str, Any]) -> dict[str, Any
     out = dict(payload)
     out["citacao"] = citacao
     return out
-
-
-@app.on_event("startup")
-def _startup() -> None:
-    get_acervo().ensure_loaded()
 
 
 @app.get("/healthz")

@@ -30,6 +30,17 @@ class Acervo:
                 self._load()
                 self._loaded = True
 
+    def _exec(self, sql: str, params=None):
+        """DuckDB não é thread-safe: serializa todas as queries."""
+        with self._lock:
+            if not self._loaded:
+                self._load()
+                self._loaded = True
+            if params is None:
+                return self._con.execute(sql)
+            return self._con.execute(sql, params)
+
+
     def reload(self) -> None:
         with self._lock:
             self._con.execute("DROP TABLE IF EXISTS metas")
@@ -224,12 +235,12 @@ class Acervo:
             return None
         # schema via duckdb describe
         abs_path = t["absolute"]
-        desc = self._con.execute(
+        desc = self._exec(
             "DESCRIBE SELECT * FROM read_csv_auto(?, header=true, sample_size=2048)",
             [abs_path],
         ).fetchall()
         # count (may be slow on large — ok for v0)
-        n = self._con.execute(
+        n = self._exec(
             "SELECT COUNT(*) FROM read_csv_auto(?, header=true)",
             [abs_path],
         ).fetchone()[0]
@@ -261,9 +272,9 @@ class Acervo:
             params.append(v)
         where_sql = (" WHERE " + " AND ".join(where)) if where else ""
         count_sql = f"SELECT COUNT(*) FROM read_csv_auto(?, header=true){where_sql}"
-        total = self._con.execute(count_sql, params).fetchone()[0]
+        total = self._exec(count_sql, params).fetchone()[0]
         # column names
-        desc = self._con.execute(
+        desc = self._exec(
             "DESCRIBE SELECT * FROM read_csv_auto(?, header=true, sample_size=512)",
             [t["absolute"]],
         ).fetchall()
@@ -273,7 +284,7 @@ class Acervo:
             f"SELECT * FROM read_csv_auto(?, header=true){where_sql} "
             f"LIMIT ? OFFSET ?"
         )
-        rows = self._con.execute(sql, qparams).fetchall()
+        rows = self._exec(sql, qparams).fetchall()
         data = [dict(zip(colnames, row)) for row in rows]
         return colnames, data, int(total)
 
@@ -311,17 +322,17 @@ class Acervo:
             qq = f"%{q.casefold()}%"
             params.extend([qq, qq, qq, qq])
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
-        total = self._con.execute(f"SELECT COUNT(*) FROM metas{where}", params).fetchone()[0]
+        total = self._exec(f"SELECT COUNT(*) FROM metas{where}", params).fetchone()[0]
         sql = f"SELECT * FROM metas{where} ORDER BY snapshot DESC, item NULLS LAST LIMIT ? OFFSET ?"
         params2 = list(params) + [limit, offset]
-        cur = self._con.execute(sql, params2)
+        cur = self._exec(sql, params2)
         cols = [d[0] for d in cur.description]
         records = [dict(zip(cols, row)) for row in cur.fetchall()]
         return records, int(total)
 
     def get_meta(self, mid: str) -> dict[str, Any] | None:
         self.ensure_loaded()
-        cur = self._con.execute("SELECT * FROM metas WHERE id = ?", [mid])
+        cur = self._exec("SELECT * FROM metas WHERE id = ?", [mid])
         cols = [d[0] for d in cur.description]
         row = cur.fetchone()
         if not row:
