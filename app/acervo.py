@@ -4,12 +4,30 @@ import hashlib
 import json
 import threading
 from pathlib import Path
+from datetime import date, datetime, time
+from decimal import Decimal
 from typing import Any
 
 import duckdb
 
 from .config import ACERVO_ROOT, DENY_SEGMENTS, PAINEL_ALLOWLIST
 from .citation import detect_cc_by_nd, strip_internal_url
+
+def _jsonable(v):
+    if v is None:
+        return None
+    if isinstance(v, (datetime, date, time)):
+        return v.isoformat()
+    if isinstance(v, Decimal):
+        return float(v)
+    if isinstance(v, bytes):
+        return v.decode("utf-8", errors="replace")
+    if isinstance(v, (list, tuple)):
+        return [_jsonable(x) for x in v]
+    if isinstance(v, dict):
+        return {k: _jsonable(x) for k, x in v.items()}
+    return v
+
 
 
 class Acervo:
@@ -285,7 +303,7 @@ class Acervo:
             f"LIMIT ? OFFSET ?"
         )
         rows = self._exec(sql, qparams).fetchall()
-        data = [dict(zip(colnames, row)) for row in rows]
+        data = [{k: _jsonable(v) for k, v in zip(colnames, row)} for row in rows]
         return colnames, data, int(total)
 
     def list_metas(
